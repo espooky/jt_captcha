@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>滑块拼图验证</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            background-color: #f7f7f7;
+        }
+
+        .captcha-container {
+            text-align: center;
+            background-color: #fff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        .captcha-box {
+            position: relative;
+            width: 300px;
+            height: 150px;
+            margin-bottom: 20px;
+            background-color: #f0f0f0;
+            border: 1px solid #ccc;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+
+        #captcha-img {
+            width: 100%;
+            height: 100%;
+            display: block;
+            border-radius: 8px;
+        }
+
+        #puzzle-piece {
+            position: absolute;
+            top: 50px;
+            left: 0;
+            width: 50px;
+            height: 50px;
+            background-size: 300px 150px;
+            border: 2px solid #4CAF50;
+            cursor: pointer;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+            transition: all 0.1s linear;
+        }
+
+        .puzzle-hole {
+            position: absolute;
+            top: 50px;
+            left: 150px;
+            width: 50px;
+            height: 50px;
+            background-color: rgba(255, 255, 255, 0.7);
+            border: 2px solid #ccc;
+            z-index: 1;
+        }
+
+        .slider-container {
+            position: relative;
+            width: 100%;
+            height: 50px;
+            background-color: #ddd;
+            border-radius: 8px;
+            border: 1px solid #ccc;
+            margin-top: 10px;
+            overflow: hidden;
+        }
+
+        #slider {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 50px;
+            height: 50px;
+            background-color: #4CAF50;
+            border-radius: 8px;
+            cursor: pointer;
+            text-align: center;
+            line-height: 50px;
+            color: white;
+            font-weight: bold;
+            transition: background-color 0.3s, width 0.3s, left 0.1s linear;
+        }
+
+        #slider.failed {
+            background-color: #FF0000;
+        }
+
+        #slider.success {
+            background-color: #E0F7FA;
+            color: #4CAF50;
+            border: 1px solid #4CAF50;
+            box-shadow: 0 0 5px #4CAF50;
+            width: 100%;
+            left: 0;
+        }
+
+        .slider-container.success {
+            background-color: #E0F7FA;
+        }
+
+        .refresh-button-small {
+            position: absolute;
+            bottom: 5px;
+            right: 5px;
+            width: 25px;
+            height: 25px;
+            background-color: #007BFF;
+            border-radius: 50%;
+            border: none;
+            color: white;
+            font-size: 16px;
+            cursor: pointer;
+            text-align: center;
+            line-height: 25px;
+            outline: none;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+        }
+    </style>
+</head>
+<body>
+    <div class="captcha-container">
+        <div class="captcha-box" id="captcha-box">
+            <img id="captcha-img" src="" alt="captcha">
+            <div class="puzzle-hole"></div>
+            <div id="puzzle-piece"></div>
+            <button class="refresh-button-small" id="refresh-button-small">&#x21bb;</button>
+        </div>
+        <div class="slider-container" id="slider-container">
+            <div id="slider">|</div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            const images = [
+                'https://cdn.pixabay.com/photo/2024/02/20/11/26/waves-8585265_1280.jpg',
+                'https://cdn.pixabay.com/photo/2023/10/17/09/01/seagull-8320687_1280.jpg',
+                'https://cdn.pixabay.com/photo/2022/01/13/00/09/austria-6934186_1280.jpg'
+            ];
+            const captchaImg = document.getElementById('captcha-img');
+            const puzzlePiece = document.getElementById('puzzle-piece');
+            const captchaBox = document.getElementById('captcha-box');
+            const slider = document.getElementById('slider');
+            const sliderContainer = document.getElementById('slider-container');
+            const refreshButtonSmall = document.getElementById('refresh-button-small');
+            const puzzleHole = document.querySelector('.puzzle-hole');
+
+            function loadRandomImage() {
+                const randomIndex = Math.floor(Math.random() * images.length);
+                const randomImage = images[randomIndex];
+                captchaImg.src = randomImage;
+
+                // Set the puzzle piece background image after the image has loaded
+                captchaImg.onload = function() {
+                    setPuzzlePieceBackground();
+                };
+            }
+
+            const holeRect = puzzleHole.getBoundingClientRect();
+            const boxRect = captchaBox.getBoundingClientRect();
+            const correctPosition = holeRect.left - boxRect.left;
+
+            let isDragging = false;
+            let startX = 0;
+
+            function setPuzzlePieceBackground() {
+                puzzlePiece.style.backgroundImage = `url(${captchaImg.src})`;
+                puzzlePiece.style.backgroundPosition = `-${correctPosition}px -${holeRect.top - boxRect.top}px`;
+            }
+
+            loadRandomImage();
+
+            slider.addEventListener('mousedown', function (e) {
+                if (!slider.classList.contains('success')) {
+                    isDragging = true;
+                    startX = e.clientX - slider.offsetLeft;
+                    slider.style.transition = 'none'; // 取消动画
+                    slider.innerText = '|';
+                }
+            });
+
+            document.addEventListener('mousemove', function (e) {
+                if (isDragging) {
+                    let moveX = e.clientX - startX;
+                    if (moveX < 0) moveX = 0;
+                    if (moveX > captchaBox.offsetWidth - puzzlePiece.offsetWidth) {
+                        moveX = captchaBox.offsetWidth - puzzlePiece.offsetWidth;
+                    }
+                    slider.style.left = moveX + 'px';
+                    puzzlePiece.style.left = moveX + 'px';
+                }
+            });
+
+            document.addEventListener('mouseup', function () {
+                if (isDragging) {
+                    isDragging = false;
+                    slider.style.transition = 'all 0.1s linear'; // 恢复动画
+                    puzzlePiece.style.transition = 'all 0.1s linear'; // 恢复动画
+
+                    if (Math.abs(parseInt(puzzlePiece.style.left) - correctPosition) < 10) {
+                        slider.classList.add('success');
+                        slider.innerText = '验证成功';
+                        sliderContainer.classList.add('success');
+                        slider.style.left = '0';
+                    } else {
+                        slider.classList.add('failed');
+                        slider.innerText = '|';
+                        setTimeout(() => {
+                            slider.classList.remove('failed');
+                            puzzlePiece.style.left = '0px';
+                            slider.style.left = '0px';
+                        }, 1000);
+                    }
+                }
+            });
+
+            refreshButtonSmall.addEventListener('click', function () {
+                puzzlePiece.style.left = '0px';
+                slider.style.left = '0px';
+                slider.classList.remove('success');
+                sliderContainer.classList.remove('success');
+                slider.innerText = '|';
+                loadRandomImage();
+            });
+        });
+    </script>
+</body>
+</html>
